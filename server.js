@@ -1,7 +1,6 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import OpenAI from 'openai';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
@@ -14,12 +13,6 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 app.use(express.static(join(__dirname, 'public')));
-
-// ── Groq client (OpenAI-compatible) ─────────────────────────────────────────
-const groq = new OpenAI({
-  apiKey: process.env.GROQ_API_KEY,
-  baseURL: 'https://api.groq.com/openai/v1',
-});
 
 // ── Health-focused system prompt ─────────────────────────────────────────────
 const SYSTEM_PROMPT = `You are MediAssist AI — a knowledgeable, empathetic health assistant.
@@ -67,11 +60,12 @@ function rateLimit(req, res, next) {
   next();
 }
 
-// ── Chat endpoint with streaming ─────────────────────────────────────────────
+// ── Chat endpoint with streaming (using native fetch) ────────────────────────
 app.post('/api/chat', rateLimit, async (req, res) => {
   try {
     // Check API key first
-    if (!process.env.GROQ_API_KEY || process.env.GROQ_API_KEY === 'your_groq_api_key_here') {
+    const apiKey = process.env.GROQ_API_KEY;
+    if (!apiKey || apiKey === 'your_groq_api_key_here') {
       return res.status(500).json({ error: 'GROQ_API_KEY is not configured on the server.' });
     }
 
@@ -87,43 +81,79 @@ app.post('/api/chat', rateLimit, async (req, res) => {
       content: String(m.content).slice(0, 4000),
     }));
 
-    const stream = await groq.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
-      messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...sanitized],
-      temperature: 0.6,
-      max_tokens: 2048,
-      stream: true,
+    // Call Groq API directly with fetch
+    const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...sanitized],
+        temperature: 0.6,
+        max_tokens: 2048,
+        stream: true,
+      }),
     });
 
-    // Set up streaming headers only after successful API call
+    if (!groqResponse.ok) {
+      const errBody = await groqResponse.text();
+      console.error('Groq API HTTP error:', groqResponse.status, errBody);
+      return res.status(groqResponse.status).json({
+        error: groqResponse.status === 429
+          ? 'Rate limit reached. Please wait a moment and try again.'
+          : `Groq API error (${groqResponse.status}): ${errBody.slice(0, 200)}`,
+      });
+    }
+
+    // Set up streaming headers
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
     res.setHeader('X-Accel-Buffering', 'no');
 
-    for await (const chunk of stream) {
-      const content = chunk.choices?.[0]?.delta?.content;
-      if (content) {
-        res.write(`data: ${JSON.stringify({ content })}\n\n`);
+    // Stream the response
+    const reader = groqResponse.body.getReader();
+    const decoder = new TextDecoder();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const text = decoder.decode(value, { stream: true });
+      const lines = text.split('\n');
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || !trimmed.startsWith('data: ')) continue;
+
+        const data = trimmed.slice(6);
+        if (data === '[DONE]') continue;
+
+        try {
+          const parsed = JSON.parse(data);
+          const content = parsed.choices?.[0]?.delta?.content;
+          if (content) {
+            res.write(`data: ${JSON.stringify({ content })}\n\n`);
+          }
+        } catch {
+          // Skip malformed chunks
+        }
       }
     }
 
     res.write('data: [DONE]\n\n');
     res.end();
   } catch (err) {
-    console.error('Groq API error:', err.message, err.status, err.code);
+    console.error('Chat error:', err.message, err.code, err.cause);
 
-    // If headers haven't been sent yet, send JSON error
     if (!res.headersSent) {
-      const status = err.status || 500;
-      return res.status(status).json({
-        error: status === 429
-          ? 'Rate limit reached. Please wait a moment and try again.'
-          : `Error: ${err.message || 'Something went wrong. Please try again.'}`,
+      return res.status(500).json({
+        error: `Error: ${err.message || 'Something went wrong. Please try again.'}`,
       });
     }
 
-    // If already streaming, send error event
     res.write(`data: ${JSON.stringify({ error: 'Stream interrupted. Please try again.' })}\n\n`);
     res.end();
   }
