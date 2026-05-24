@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MediAssist AI — Your Health Assistant</title>
+  <meta name="description" content="AI-powered health assistant that helps you understand symptoms, conditions, and wellness. Powered by Groq LLaMA." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <!-- ── Sidebar ──────────────────────────────────────────────────── -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <div class="logo-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+            </svg>
+          </div>
+          <span class="logo-text">MediAssist AI</span>
+        </div>
+      </div>
+      <button class="new-chat-btn" id="newChatBtn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        New Conversation
+      </button>
+      <div class="sidebar-footer">
+        <div class="disclaimer-badge">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          Not a substitute for medical advice
+        </div>
+      </div>
+    </aside>
+
+    <!-- ── Main Chat Area ──────────────────────────────────────────── -->
+    <main class="chat-area">
+      <!-- Mobile header -->
+      <header class="mobile-header" id="mobileHeader">
+        <button class="menu-btn" id="menuBtn" aria-label="Toggle sidebar">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/>
+          </svg>
+        </button>
+        <span class="mobile-title">MediAssist AI</span>
+        <div style="width:22px"></div>
+      </header>
+
+      <!-- Messages container -->
+      <div class="messages-container" id="messagesContainer">
+        <div class="messages" id="messages">
+          <!-- Welcome screen -->
+          <div class="welcome" id="welcome">
+            <div class="welcome-icon">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="url(#welcomeGrad)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <defs>
+                  <linearGradient id="welcomeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#06b6d4"/>
+                    <stop offset="100%" stop-color="#8b5cf6"/>
+                  </linearGradient>
+                </defs>
+                <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+              </svg>
+            </div>
+            <h1 class="welcome-title">How can I help you today?</h1>
+            <p class="welcome-subtitle">I'm your AI health assistant. Ask me about symptoms, conditions, wellness tips, or anything health-related.</p>
+            <div class="suggestions">
+              <button class="suggestion-chip" data-prompt="I've been having headaches for the past week. What could be causing them?">
+                <span class="chip-icon">🤕</span>
+                <span>Recurring headaches</span>
+              </button>
+              <button class="suggestion-chip" data-prompt="What are some effective ways to reduce stress and improve mental health?">
+                <span class="chip-icon">🧘</span>
+                <span>Stress & mental health</span>
+              </button>
+              <button class="suggestion-chip" data-prompt="Can you explain what a balanced diet looks like and suggest a simple meal plan?">
+                <span class="chip-icon">🥗</span>
+                <span>Nutrition & diet</span>
+              </button>
+              <button class="suggestion-chip" data-prompt="I'm having trouble sleeping. What are some science-backed tips for better sleep?">
+                <span class="chip-icon">😴</span>
+                <span>Sleep improvement</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Input area -->
+      <div class="input-area" id="inputArea">
+        <div class="input-wrapper">
+          <textarea
+            id="messageInput"
+            class="message-input"
+            placeholder="Describe your symptoms or ask a health question..."
+            rows="1"
+            aria-label="Message input"
+          ></textarea>
+          <button class="send-btn" id="sendBtn" aria-label="Send message" disabled>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
+          </button>
+        </div>
+        <p class="input-disclaimer">MediAssist AI can make mistakes. Always verify with a healthcare professional.</p>
+      </div>
+    </main>
+  </div>
+
+  <!-- Overlay for mobile sidebar -->
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>
