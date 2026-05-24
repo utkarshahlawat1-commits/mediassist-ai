@@ -106,7 +106,7 @@ app.post('/api/chat', rateLimit, async (req, res) => {
     res.write('data: [DONE]\n\n');
     res.end();
   } catch (err) {
-    console.error('Groq API error:', err.message);
+    console.error('Groq API error:', err.message, err.status, err.code);
 
     // If headers haven't been sent yet, send JSON error
     if (!res.headersSent) {
@@ -114,7 +114,7 @@ app.post('/api/chat', rateLimit, async (req, res) => {
       return res.status(status).json({
         error: status === 429
           ? 'Rate limit reached. Please wait a moment and try again.'
-          : 'Something went wrong. Please try again.',
+          : `Error: ${err.message || 'Something went wrong. Please try again.'}`,
       });
     }
 
@@ -126,7 +126,8 @@ app.post('/api/chat', rateLimit, async (req, res) => {
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', model: 'llama-3.3-70b-versatile' });
+  const keySet = !!process.env.GROQ_API_KEY && process.env.GROQ_API_KEY !== 'your_groq_api_key_here';
+  res.json({ status: 'ok', model: 'llama-3.3-70b-versatile', apiKeyConfigured: keySet });
 });
 
 // ── SPA fallback ─────────────────────────────────────────────────────────────
