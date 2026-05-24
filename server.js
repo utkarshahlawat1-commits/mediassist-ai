@@ -70,6 +70,11 @@ function rateLimit(req, res, next) {
 // ── Chat endpoint with streaming ─────────────────────────────────────────────
 app.post('/api/chat', rateLimit, async (req, res) => {
   try {
+    // Check API key first
+    if (!process.env.GROQ_API_KEY || process.env.GROQ_API_KEY === 'your_groq_api_key_here') {
+      return res.status(500).json({ error: 'GROQ_API_KEY is not configured on the server.' });
+    }
+
     const { messages } = req.body;
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
@@ -82,12 +87,6 @@ app.post('/api/chat', rateLimit, async (req, res) => {
       content: String(m.content).slice(0, 4000),
     }));
 
-    // Set up streaming headers
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-    res.setHeader('X-Accel-Buffering', 'no');
-
     const stream = await groq.chat.completions.create({
       model: 'llama-3.3-70b-versatile',
       messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...sanitized],
@@ -95,6 +94,12 @@ app.post('/api/chat', rateLimit, async (req, res) => {
       max_tokens: 2048,
       stream: true,
     });
+
+    // Set up streaming headers only after successful API call
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
 
     for await (const chunk of stream) {
       const content = chunk.choices?.[0]?.delta?.content;
