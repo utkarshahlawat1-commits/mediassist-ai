@@ -16,23 +16,33 @@ app.use(express.json());
 app.use(express.static(join(__dirname, 'public')));
 
 // ── Firebase Admin SDK ───────────────────────────────────────────────────────
-if (process.env.FIREBASE_PROJECT_ID) {
-  admin.initializeApp({
-    credential: admin.credential.cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: (() => {
-        let key = process.env.FIREBASE_PRIVATE_KEY || '';
-        key = key.replace(/^["'\s]+|["',\s]+$/g, '').replace(/\\n/g, '\n');
-        if (!key.includes('\n') && key.includes('BEGIN PRIVATE KEY')) {
-          let body = key.replace(/-----BEGIN PRIVATE KEY-----/, '').replace(/-----END PRIVATE KEY-----/, '');
-          return `-----BEGIN PRIVATE KEY-----\n${body.trim().replace(/ /g, '\n')}\n-----END PRIVATE KEY-----\n`;
-        }
-        return key;
-      })(),
-    }),
-  });
-  console.log('  ✅ Firebase Admin initialized');
+if (process.env.FIREBASE_PROJECT_ID || process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+  try {
+    let credentialCert;
+    if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+      // Bullet-proof method: parse the entire raw JSON string
+      credentialCert = admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON));
+    } else {
+      let key = process.env.FIREBASE_PRIVATE_KEY || '';
+      key = key.replace(/^["'\s]+|["',\s]+$/g, '').replace(/\\n/g, '\n');
+      if (!key.includes('\n') && key.includes('BEGIN PRIVATE KEY')) {
+        let body = key.replace(/-----BEGIN PRIVATE KEY-----/, '').replace(/-----END PRIVATE KEY-----/, '');
+        key = `-----BEGIN PRIVATE KEY-----\n${body.trim().replace(/ /g, '\n')}\n-----END PRIVATE KEY-----\n`;
+      }
+      credentialCert = admin.credential.cert({
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: key,
+      });
+    }
+
+    admin.initializeApp({
+      credential: credentialCert,
+    });
+    console.log('  ✅ Firebase Admin initialized');
+  } catch (err) {
+    console.error('  ❌ Firebase Admin Init Error:', err.message);
+  }
 } else {
   console.warn('  ⚠️  Firebase not configured — auth will be disabled');
 }
